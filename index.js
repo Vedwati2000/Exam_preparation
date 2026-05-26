@@ -1,44 +1,43 @@
-const API_KEY = "AIzaSyA9iaHTAPqLTN7XpAcpab0qPPeMEk0GAiI";
-const API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent";
-
+const API_URL ="https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent";
 let currentUser = null;
 
 async function callGeminiAPI(prompt) {
-    try {
-        const response = await fetch(`${API_URL}?key=${API_KEY}`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                contents: [{
-                    parts: [{
-                        text: prompt
-                    }]
-                }],
-                generationConfig: {
-                    temperature: 0.7,
-                    maxOutputTokens: 1000,
-                    topP: 0.95,
-                    topK: 40
-                }
-            })
-        });
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            console.error("API Error:", errorData);
-            throw new Error(`API Error: ${response.status}`);
-        }
+    try {
+
+        const response = await fetch(
+            'http://localhost:3000/api/gemini/ask',
+            {
+
+                method: 'POST',
+
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+
+                body: JSON.stringify({
+                    prompt
+                })
+            }
+        );
 
         const data = await response.json();
-        if (data.candidates && data.candidates[0] && data.candidates[0].content) {
+
+        if (
+            data.candidates &&
+            data.candidates[0] &&
+            data.candidates[0].content
+        ) {
+
             return data.candidates[0].content.parts[0].text;
-        } else {
-            return null;
         }
+
+        return null;
+
     } catch (error) {
-        console.error("Gemini API call failed:", error);
+
+        console.log(error);
+
         return null;
     }
 }
@@ -77,10 +76,10 @@ Provide a detailed, accurate, and exam-focused BCA answer and also don't include
 async function getMockResponse(question) {
     await new Promise(resolve => setTimeout(resolve, 800));
     const lowerQ = question.toLowerCase();
-    
+
     if (lowerQ.includes('oop') || lowerQ.includes('object oriented')) {
         return "**Object Oriented Programming (OOP) Concepts - BCA Exam Focus:**\n\n**1. Encapsulation:** Wrapping data and methods into a single unit (class). Example: A BankAccount class with private balance variable and public methods to deposit/withdraw.\n\n**2. Inheritance:** Creating new classes from existing ones. Example: Student class inheriting from Person class.\n\n**3. Polymorphism:** One interface, multiple implementations. Example: Method overloading and overriding.\n\n**4. Abstraction:** Hiding implementation details. Example: Abstract classes and interfaces.\n\n**Exam Tip:** These four concepts are fundamental to OOP and frequently asked in BCA exams. Remember to provide real-world examples!";
-    } 
+    }
     else if (lowerQ.includes('dbms') || lowerQ.includes('normalization') || lowerQ.includes('sql')) {
         return "**Database Management System (DBMS) - Key Topics for BCA Exam:**\n\n**Normalization Forms:**\n• 1NF: Eliminate repeating groups, atomic values\n• 2NF: Remove partial dependencies\n• 3NF: Remove transitive dependencies\n• BCNF: Advanced normalization\n\n**Important SQL Commands:**\n```sql\nSELECT * FROM Students WHERE grade='A';\nINSERT INTO Courses VALUES (101, 'DBMS', 4);\nUPDATE Students SET grade='B' WHERE id=5;\nDELETE FROM Students WHERE id=10;\n```\n\n**ACID Properties:** Atomicity, Consistency, Isolation, Durability\n\n**Exam Tip:** Practice writing SQL queries and understand normalization with examples!";
     }
@@ -99,7 +98,7 @@ async function getAIResponse(userMessage) {
     try {
         const prompt = buildBCAPrompt(userMessage);
         const response = await callGeminiAPI(prompt);
-        
+
         if (response && response.trim().length > 0) {
             return response.trim();
         } else {
@@ -115,20 +114,20 @@ function addMessage(role, content) {
     const chatMessages = document.getElementById('chatMessages');
     const messageDiv = document.createElement('div');
     messageDiv.classList.add(role === 'user' ? 'user-message' : 'ai-message');
-    
+
     const icon = role === 'user' ? '👤' : '🤖';
     let formattedContent = content.replace(/\n/g, '<br>');
     formattedContent = formattedContent.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
     formattedContent = formattedContent.replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>');
     formattedContent = formattedContent.replace(/`(.*?)`/g, '<code>$1</code>');
-    
+
     messageDiv.innerHTML = `
         <div class="d-flex align-items-start">
             <div class="flex-shrink-0 me-2" style="font-size: 1.2rem;">${icon}</div>
             <div class="flex-grow-1" style="white-space: pre-line;">${formattedContent}</div>
         </div>
     `;
-    
+
     chatMessages.appendChild(messageDiv);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 }
@@ -147,22 +146,43 @@ function hideTyping() {
 
 async function sendUserQuestion(questionText) {
     if (!questionText.trim()) return;
-    
+
     const sendBtn = document.getElementById('sendBtn');
     const userQuestion = document.getElementById('userQuestion');
-    
+
     sendBtn.disabled = true;
     userQuestion.value = '';
     addMessage('user', questionText);
     showTyping();
-    
+
     try {
+
         const aiResponse = await getAIResponse(questionText);
+
+        await fetch('http://localhost:3000/api/chat/save-chat', {
+
+            method: 'POST',
+
+            headers: {
+                'Content-Type': 'application/json'
+            },
+
+            body: JSON.stringify({
+
+                userName: currentUser.name,
+
+                userQuestion: questionText,
+
+                aiResponse: aiResponse
+            })
+        });
+
         hideTyping();
+
         addMessage('ai', aiResponse);
     } catch (error) {
         hideTyping();
-        addMessage('ai', "⚠️ Sorry, I'm having trouble connecting. Please try again!");
+        addMessage('ai', "Sorry, I'm having trouble connecting. Please try again!");
         console.error(error);
     } finally {
         sendBtn.disabled = false;
@@ -173,11 +193,11 @@ async function sendUserQuestion(questionText) {
 function initChatHistory() {
     const chatMessages = document.getElementById('chatMessages');
     const userName = document.getElementById('displayUserName')?.innerText || "Student";
-    
+
     chatMessages.innerHTML = '';
-    
+
     const welcomeMessage = `✨ Hello **${userName}**! I'm your AI Exam Preparation Tutor for **BCA Curriculum**.\n\nI can help you with:\n• Programming (C, C++, Java, Python)\n• Database Management Systems (DBMS) & SQL\n• Computer Networks & OSI Model\n• Data Structures & Algorithms\n• Operating Systems\n• Software Engineering & Web Development\n\n**Ask me any BCA exam question or click on a topic above!** 🚀`;
-    
+
     const welcomeDiv = document.createElement('div');
     welcomeDiv.classList.add('ai-message');
     welcomeDiv.innerHTML = `
@@ -192,13 +212,13 @@ function initChatHistory() {
 function onLoginSuccess(name, email) {
     currentUser = { name, email };
     document.getElementById('displayUserName').innerText = name;
-    
+
     const loginSection = document.getElementById('loginSection');
     const tutorSection = document.getElementById('tutorSection');
-    
+
     loginSection.style.display = 'none';
     tutorSection.style.display = 'block';
-    
+
     initChatHistory();
     document.getElementById('userQuestion').focus();
 }
@@ -207,27 +227,47 @@ function logout() {
     currentUser = null;
     const loginSection = document.getElementById('loginSection');
     const tutorSection = document.getElementById('tutorSection');
-    
+
     tutorSection.style.display = 'none';
     loginSection.style.display = 'block';
-    
+
     document.getElementById('loginName').value = '';
     document.getElementById('loginEmail').value = '';
     document.getElementById('loginPassword').value = '';
 }
 
-document.getElementById('loginForm').addEventListener('submit', (e) => {
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
+
     const name = document.getElementById('loginName').value.trim();
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
-    
-    if (!name || !email || !password) {
-        alert('Please fill in all fields');
-        return;
+
+    try {
+        const response = await fetch('http://localhost:3000/api/users/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name,
+                email,
+                password
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            alert(data.message);
+            onLoginSuccess(name, email);
+        } else {
+            alert(data.error);
+        }
+
+    } catch (error) {
+        console.log(error);
     }
-    
-    onLoginSuccess(name, email);
 });
 
 document.getElementById('logoutBtn').addEventListener('click', logout);
