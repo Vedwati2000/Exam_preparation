@@ -6,7 +6,7 @@ async function callGeminiAPI(prompt) {
     try {
 
         const response = await fetch(
-            'http://localhost:3000/api/gemini/ask',
+            'https://exam-preparationbackend.onrender.com/api/gemini/ask',
             {
 
                 method: 'POST',
@@ -159,7 +159,7 @@ async function sendUserQuestion(questionText) {
 
         const aiResponse = await getAIResponse(questionText);
 
-        await fetch('http://localhost:3000/api/chat/save-chat', {
+        await fetch('https://exam-preparationbackend.onrender.com/api/chat/save-chat', {
 
             method: 'POST',
 
