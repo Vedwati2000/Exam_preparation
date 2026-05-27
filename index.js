@@ -1,4 +1,4 @@
-const API_URL ="https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent";
+
 let currentUser = null;
 
 async function callGeminiAPI(prompt) {
@@ -236,6 +236,7 @@ function logout() {
     document.getElementById('loginPassword').value = '';
 }
 
+
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
@@ -244,7 +245,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const password = document.getElementById('loginPassword').value;
 
     try {
-        const response = await fetch('http://localhost:3000/api/users/register', {
+        const response = await fetch('https:localhost:3000/api/users', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
